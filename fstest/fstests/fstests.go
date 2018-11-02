@@ -292,7 +292,6 @@ func Run(t *testing.T, opt *Opt) {
 		file2         = fstest.Item{
 			ModTime: fstest.Time("2001-02-03T04:05:10.123123123Z"),
 			Path:    `hello? sausage/êé/Hello, 世界/ " ' @ < > & ? + ≠/z.txt`,
-			WinPath: `hello_ sausage/êé/Hello, 世界/ _ ' @ _ _ & _ + ≠/z.txt`,
 		}
 		isLocalRemote bool
 		purged        bool // whether the dir has been purged or not
@@ -933,10 +932,6 @@ func Run(t *testing.T, opt *Opt) {
 					dir, _ := path.Split(fileName)
 					dir = dir[:len(dir)-1]
 					objs, dirs, err = walk.GetAll(context.Background(), remote, dir, true, -1)
-					if err != fs.ErrorDirNotFound {
-						break
-					}
-					fileName = file2.WinPath
 				}
 				require.NoError(t, err)
 				require.Len(t, objs, 1)
@@ -1052,7 +1047,6 @@ func Run(t *testing.T, opt *Opt) {
 				// check happy path, i.e. no naming conflicts when rename and move are two
 				// separate operations
 				file2Move.Path = "other.txt"
-				file2Move.WinPath = ""
 				src := findObject(t, remote, file2.Path)
 				dst, err := doMove(context.Background(), src, file2Move.Path)
 				if err == fs.ErrorCantMove {
@@ -1137,7 +1131,6 @@ func Run(t *testing.T, opt *Opt) {
 				file1Copy.Path = path.Join(newName, file1.Path)
 				file2Copy := file2
 				file2Copy.Path = path.Join(newName, file2.Path)
-				file2Copy.WinPath = path.Join(newName, file2.WinPath)
 				fstest.CheckListingWithPrecision(t, newRemote, []fstest.Item{file2Copy, file1Copy}, []string{
 					"new_name",
 					"new_name/sub_new_name",
@@ -1362,7 +1355,6 @@ func Run(t *testing.T, opt *Opt) {
 				remoteName := subRemoteName + "/" + file2.Path
 				file2Copy := file2
 				file2Copy.Path = "z.txt"
-				file2Copy.WinPath = ""
 				fileRemote, err := fs.NewFs(remoteName)
 				require.NotNil(t, fileRemote)
 				assert.Equal(t, fs.ErrorIsFile, err)
