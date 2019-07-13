@@ -19,6 +19,7 @@ require (
 	github.com/goftp/file-driver v0.0.0-20180502053751-5d604a0fc0c9 // indirect
 	github.com/goftp/server v0.0.0-20190304020633-eabccc535b5a
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/jlaffaye/ftp v0.0.0-20190624084859-c1312a7102bf
 	github.com/jzelinskie/whirlpool v0.0.0-20170603002051-c19460b8caa6
