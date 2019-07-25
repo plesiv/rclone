@@ -356,7 +356,7 @@ func CompareItems(t *testing.T, entries fs.DirEntries, items []Item, expectedDir
 	is := NewItems(items)
 	var objs []fs.Object
 	var dirs []fs.Directory
-	wantListing1, wantListing2 := makeListingFromItems(items)
+	wantListing := makeListingFromItems(items)
 	for _, entry := range entries {
 		switch x := entry.(type) {
 		case fs.Directory:
@@ -370,8 +370,8 @@ func CompareItems(t *testing.T, entries fs.DirEntries, items []Item, expectedDir
 	}
 
 	gotListing := makeListingFromObjects(objs)
-	listingOK := wantListing1 == gotListing || wantListing2 == gotListing
-	assert.True(t, listingOK, fmt.Sprintf("%s not equal, want\n  %s or\n  %s got\n  %s", what, wantListing1, wantListing2, gotListing))
+	listingOK := wantListing == gotListing
+	assert.True(t, listingOK, fmt.Sprintf("%s not equal, want\n  %s got\n  %s", what, wantListing, gotListing))
 	for _, obj := range objs {
 		require.NotNil(t, obj)
 		is.Find(t, obj, precision)
