@@ -133,7 +133,9 @@ backends:
    fastlist: false
  - backend:  "putio"
    remote:   "TestPutio:"
-   subdir:   false
+   fastlist: false
+ - backend:  "sharefile"
+   remote:   "TestSharefile:"
    fastlist: false
  - backend:  "mailru"
    remote:   "TestMailru:"
