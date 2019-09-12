@@ -110,7 +110,7 @@ const (
 	tokenPath                   = "/oauth/token" // add to endpoint to get Token path
 	minChunkSize                = 256 * fs.KibiByte
 	maxChunkSize                = 2 * fs.GibiByte
-	defaultChunkSize            = 32 * fs.MebiByte
+	defaultChunkSize            = 64 * fs.MebiByte
 	defaultUploadCutoff         = 128 * fs.MebiByte
 )
 
