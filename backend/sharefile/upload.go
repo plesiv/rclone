@@ -93,7 +93,7 @@ func (up *largeUpload) parseUploadFinishResponse(respBody []byte) (err error) {
 }
 
 // Transfer a chunk
-func (up *largeUpload) transferChunk(part int64, offset int64, body []byte, fileHash string) error {
+func (up *largeUpload) transferChunk(ctx context.Context, part int64, offset int64, body []byte, fileHash string) error {
 	md5sumRaw := md5.Sum(body)
 	md5sum := hex.EncodeToString(md5sumRaw[:])
 	size := int64(len(body))
@@ -118,7 +118,7 @@ func (up *largeUpload) transferChunk(part int64, offset int64, body []byte, file
 	err := up.f.pacer.Call(func() (bool, error) {
 		fs.Debugf(up.o, "Sending chunk %d length %d", part, len(body))
 		opts.Body = up.wrap(bytes.NewReader(body))
-		resp, err := up.f.srv.Call(&opts)
+		resp, err := up.f.srv.Call(ctx, &opts)
 		retry, err := shouldRetry(resp, err)
 		if err != nil {
 			fs.Debugf(up.o, "Error sending chunk %d (retry=%v): %v: %#v", part, retry, err, err)
@@ -143,7 +143,7 @@ func (up *largeUpload) transferChunk(part int64, offset int64, body []byte, file
 }
 
 // finish closes off the large upload and reads the metadata
-func (up *largeUpload) finish() error {
+func (up *largeUpload) finish(ctx context.Context) error {
 	fs.Debugf(up.o, "Finishing large file upload")
 	// For a streamed transfer we will already have read the info
 	if up.streamed {
@@ -156,7 +156,7 @@ func (up *largeUpload) finish() error {
 	}
 	var respBody []byte
 	err := up.f.pacer.Call(func() (bool, error) {
-		resp, err := up.f.srv.Call(&opts)
+		resp, err := up.f.srv.Call(ctx, &opts)
 		if err != nil {
 			return shouldRetry(resp, err)
 		}
@@ -170,7 +170,7 @@ func (up *largeUpload) finish() error {
 }
 
 // Upload uploads the chunks from the input
-func (up *largeUpload) Upload() error {
+func (up *largeUpload) Upload(ctx context.Context) error {
 	if up.parts >= 0 {
 		fs.Debugf(up.o, "Starting upload of large file in %d chunks", up.parts)
 	} else {
@@ -222,7 +222,7 @@ outer:
 		transferChunk := func(part, offset int64, buf []byte, fileHash string) {
 			defer wg.Done()
 			defer up.f.putUploadBlock(buf)
-			err := up.transferChunk(part, offset, buf, fileHash)
+			err := up.transferChunk(ctx, part, offset, buf, fileHash)
 			if err != nil {
 				select {
 				case errs <- err:
@@ -254,7 +254,7 @@ outer:
 	}
 
 	// finish regardless of errors
-	finishErr := up.finish()
+	finishErr := up.finish(ctx)
 	if err == nil {
 		err = finishErr
 	}

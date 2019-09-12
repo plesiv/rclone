@@ -300,7 +300,7 @@ func (f *Fs) readMetaDataForIDPath(ctx context.Context, id, path string, directo
 	var item api.Item
 	var resp *http.Response
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.CallJSON(&opts, nil, &item)
+		resp, err = f.srv.CallJSON(ctx, &opts, nil, &item)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -557,7 +557,7 @@ func (f *Fs) NewObject(ctx context.Context, remote string) (fs.Object, error) {
 func (f *Fs) FindLeaf(ctx context.Context, pathID, leaf string) (pathIDOut string, found bool, err error) {
 	if pathID == "top" {
 		// Find the leaf in pathID
-		found, err = f.listAll(pathID, true, false, func(item *api.Item) bool {
+		found, err = f.listAll(ctx, pathID, true, false, func(item *api.Item) bool {
 			if item.Name == leaf {
 				pathIDOut = item.ID
 				return true
@@ -596,7 +596,7 @@ func (f *Fs) CreateDir(ctx context.Context, pathID, leaf string) (newID string, 
 		},
 	}
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.CallJSON(&opts, &req, &info)
+		resp, err = f.srv.CallJSON(ctx, &opts, &req, &info)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -616,7 +616,7 @@ type listAllFn func(*api.Item) bool
 // Lists the directory required calling the user function on each item found
 //
 // If the user fn ever returns true then it early exits with found = true
-func (f *Fs) listAll(dirID string, directoriesOnly bool, filesOnly bool, fn listAllFn) (found bool, err error) {
+func (f *Fs) listAll(ctx context.Context, dirID string, directoriesOnly bool, filesOnly bool, fn listAllFn) (found bool, err error) {
 	opts := rest.Opts{
 		Method: "GET",
 		Path:   "/Items(" + dirID + ")/Children",
@@ -628,7 +628,7 @@ func (f *Fs) listAll(dirID string, directoriesOnly bool, filesOnly bool, fn list
 	var result api.ListResponse
 	var resp *http.Response
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.CallJSON(&opts, nil, &result)
+		resp, err = f.srv.CallJSON(ctx, &opts, nil, &result)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -677,7 +677,7 @@ func (f *Fs) List(ctx context.Context, dir string) (entries fs.DirEntries, err e
 		return nil, err
 	}
 	var iErr error
-	_, err = f.listAll(directoryID, false, false, func(info *api.Item) bool {
+	_, err = f.listAll(ctx, directoryID, false, false, func(info *api.Item) bool {
 		remote := path.Join(dir, info.Name)
 		if info.Type == api.ItemTypeFolder {
 			// cache the directory ID for later lookups
@@ -796,7 +796,7 @@ func (f *Fs) purgeCheck(ctx context.Context, dir string, check bool) error {
 
 	// need to check if empty as it will delete recursively by default
 	if check {
-		found, err := f.listAll(rootID, false, false, func(item *api.Item) bool {
+		found, err := f.listAll(ctx, rootID, false, false, func(item *api.Item) bool {
 			return true
 		})
 		if err != nil {
@@ -891,7 +891,7 @@ func (f *Fs) updateItem(ctx context.Context, id, leaf, directoryID string, modTi
 	}
 	var resp *http.Response
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.CallJSON(&opts, &update, &info)
+		resp, err = f.srv.CallJSON(ctx, &opts, &update, &info)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1173,7 +1173,7 @@ func (f *Fs) Copy(ctx context.Context, src fs.Object, remote string) (dst fs.Obj
 	var resp *http.Response
 	var info *api.Item
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.CallJSON(&opts, nil, &info)
+		resp, err = f.srv.CallJSON(ctx, &opts, nil, &info)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1334,7 +1334,7 @@ func (o *Object) Open(ctx context.Context, options ...fs.OpenOption) (in io.Read
 	var resp *http.Response
 	var dl api.DownloadSpecification
 	err = o.fs.pacer.Call(func() (bool, error) {
-		resp, err = o.fs.srv.CallJSON(&opts, nil, &dl)
+		resp, err = o.fs.srv.CallJSON(ctx, &opts, nil, &dl)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1349,7 +1349,7 @@ func (o *Object) Open(ctx context.Context, options ...fs.OpenOption) (in io.Read
 		Options: options,
 	}
 	err = o.fs.pacer.Call(func() (bool, error) {
-		resp, err = o.fs.srv.Call(&opts)
+		resp, err = o.fs.srv.Call(ctx, &opts)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1404,7 +1404,7 @@ func (o *Object) Update(ctx context.Context, in io.Reader, src fs.ObjectInfo, op
 		Path:   "/Items(" + directoryID + ")/Upload2",
 	}
 	err = o.fs.pacer.Call(func() (bool, error) {
-		resp, err = o.fs.srv.CallJSON(&opts, &req, &info)
+		resp, err = o.fs.srv.CallJSON(ctx, &opts, &req, &info)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1417,7 +1417,7 @@ func (o *Object) Update(ctx context.Context, in io.Reader, src fs.ObjectInfo, op
 		if err != nil {
 			return err
 		}
-		return up.Upload()
+		return up.Upload(ctx)
 	}
 
 	// Single part upload
@@ -1429,7 +1429,7 @@ func (o *Object) Update(ctx context.Context, in io.Reader, src fs.ObjectInfo, op
 	}
 	var finish api.UploadFinishResponse
 	err = o.fs.pacer.CallNoRetry(func() (bool, error) {
-		resp, err = o.fs.srv.CallJSON(&opts, nil, &finish)
+		resp, err = o.fs.srv.CallJSON(ctx, &opts, nil, &finish)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
@@ -1465,7 +1465,7 @@ func (f *Fs) remove(ctx context.Context, id string) (err error) {
 	}
 	var resp *http.Response
 	err = f.pacer.Call(func() (bool, error) {
-		resp, err = f.srv.Call(&opts)
+		resp, err = f.srv.Call(ctx, &opts)
 		return shouldRetry(resp, err)
 	})
 	if err != nil {
