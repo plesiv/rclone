@@ -1,5 +1,7 @@
 // Package sharefile provides an interface to the Citrix Sharefile
 // object storage system.
+
+//+go:generate ./update-timezone.sh
 package sharefile
 
 /* NOTES
@@ -74,6 +76,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -443,11 +446,21 @@ func NewFs(name, root string, m configmap.Mapper) (fs.Fs, error) {
 		})
 	}
 
-	location, err := time.LoadLocation("America/New_York")
+	// Load the server timezone from an internal file
+	// Used to correct the time in SetModTime
+	const serverTimezone = "America/New_York"
+	timezone, err := tzdata.Open(serverTimezone)
 	if err != nil {
-		fs.Errorf(f, "Failed to load timezone db: times set with SetModTime will be wrong: %v", err)
-	} else {
-		f.location = location
+		return nil, errors.Wrap(err, "failed to open timezone db")
+	}
+	tzdata, err := ioutil.ReadAll(timezone)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read timezone")
+	}
+	_ = timezone.Close()
+	f.location, err = time.LoadLocationFromTZData(serverTimezone, tzdata)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load location from timezone")
 	}
 
 	// Find ID of user's root folder
