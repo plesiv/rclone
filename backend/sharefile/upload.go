@@ -119,16 +119,13 @@ func (up *largeUpload) transferChunk(ctx context.Context, part int64, offset int
 		fs.Debugf(up.o, "Sending chunk %d length %d", part, len(body))
 		opts.Body = up.wrap(bytes.NewReader(body))
 		resp, err := up.f.srv.Call(ctx, &opts)
-		retry, err := shouldRetry(resp, err)
 		if err != nil {
-			fs.Debugf(up.o, "Error sending chunk %d (retry=%v): %v: %#v", part, retry, err, err)
-			// } else if rand.Int()%5 == 0 {
-			// 	err = errors.New("FIXME test failure")
-			// 	retry = true
-			return retry, err
+			fs.Debugf(up.o, "Error sending chunk %d: %v", part, err)
+		} else {
+			respBody, err = rest.ReadBody(resp)
 		}
-		respBody, err = rest.ReadBody(resp)
-		return shouldRetry(resp, err)
+		// retry all errors now that the multipart upload has started
+		return err != nil, err
 	})
 	if err != nil {
 		fs.Debugf(up.o, "Error sending chunk %d: %v", part, err)
@@ -161,7 +158,8 @@ func (up *largeUpload) finish(ctx context.Context) error {
 			return shouldRetry(resp, err)
 		}
 		respBody, err = rest.ReadBody(resp)
-		return shouldRetry(resp, err)
+		// retry all errors now that the multipart upload has started
+		return err != nil, err
 	})
 	if err != nil {
 		return err
