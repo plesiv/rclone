@@ -13,3 +13,6 @@ unzip ${tzinfo} America/New_York
 cd ..
 # Make the embedded assets
 go run generate_tzdata.go
+
+# tidy up
+rm -rf tzdata

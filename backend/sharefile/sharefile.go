@@ -1,8 +1,8 @@
 // Package sharefile provides an interface to the Citrix Sharefile
 // object storage system.
-
-//+go:generate ./update-timezone.sh
 package sharefile
+
+//go:generate ./update-timezone.sh
 
 /* NOTES
 
